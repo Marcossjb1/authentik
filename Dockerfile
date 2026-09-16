@@ -9,14 +9,12 @@ ENV NODE_ENV=production
 
 WORKDIR /work/web
 
-# Substituído --mount=type=bind/cache por COPY + RUN simples — o builder do
-# Railway não suporta esses tipos de mount do BuildKit (só teste local com
-# Docker aceitaria); mesmo conjunto de arquivos, sem otimização de camada.
-COPY ./web/package.json /work/web/package.json
-COPY ./web/package-lock.json /work/web/package-lock.json
-COPY ./web/packages/sfe/package.json /work/web/packages/sfe/package.json
-COPY ./web/scripts /work/web/scripts
-RUN npm ci
+RUN --mount=type=bind,target=/work/web/package.json,src=./web/package.json \
+    --mount=type=bind,target=/work/web/package-lock.json,src=./web/package-lock.json \
+    --mount=type=bind,target=/work/web/packages/sfe/package.json,src=./web/packages/sfe/package.json \
+    --mount=type=bind,target=/work/web/scripts,src=./web/scripts \
+    --mount=type=cache,id=npm-ak,sharing=shared,target=/root/.npm \
+    npm ci
 
 COPY ./package.json /work
 COPY ./web /work/web/
@@ -39,14 +37,16 @@ ARG GOARCH=$TARGETARCH
 
 WORKDIR /go/src/goauthentik.io
 
-RUN dpkg --add-architecture arm64 && \
+RUN --mount=type=cache,id=apt-$TARGETARCH$TARGETVARIANT,sharing=locked,target=/var/cache/apt \
+    dpkg --add-architecture arm64 && \
     apt-get update && \
     apt-get install -y --no-install-recommends crossbuild-essential-arm64 gcc-aarch64-linux-gnu
 
-COPY ./go.mod /go/src/goauthentik.io/go.mod
-COPY ./go.sum /go/src/goauthentik.io/go.sum
-COPY ./gen-go-api /go/src/goauthentik.io/gen-go-api
-RUN go mod download
+RUN --mount=type=bind,target=/go/src/goauthentik.io/go.mod,src=./go.mod \
+    --mount=type=bind,target=/go/src/goauthentik.io/go.sum,src=./go.sum \
+    --mount=type=bind,target=/go/src/goauthentik.io/gen-go-api,src=./gen-go-api \
+    --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 COPY ./cmd /go/src/goauthentik.io/cmd
 COPY ./authentik/lib /go/src/goauthentik.io/authentik/lib
@@ -57,7 +57,10 @@ COPY ./internal /go/src/goauthentik.io/internal
 COPY ./go.mod /go/src/goauthentik.io/go.mod
 COPY ./go.sum /go/src/goauthentik.io/go.sum
 
-RUN if [ "$TARGETARCH" = "arm64" ]; then export CC=aarch64-linux-gnu-gcc && export CC_FOR_TARGET=gcc-aarch64-linux-gnu; fi && \
+RUN --mount=type=cache,sharing=locked,target=/go/pkg/mod \
+    --mount=type=bind,target=/go/src/goauthentik.io/gen-go-api,src=./gen-go-api \
+    --mount=type=cache,id=go-build-$TARGETARCH$TARGETVARIANT,sharing=locked,target=/root/.cache/go-build \
+    if [ "$TARGETARCH" = "arm64" ]; then export CC=aarch64-linux-gnu-gcc && export CC_FOR_TARGET=gcc-aarch64-linux-gnu; fi && \
     CGO_ENABLED=1 GOFIPS140=latest GOARM="${TARGETVARIANT#v}" \
     go build -o /go/authentik ./cmd/server
 
@@ -69,12 +72,10 @@ ENV GEOIPUPDATE_VERBOSE="1"
 ENV GEOIPUPDATE_ACCOUNT_ID_FILE="/run/secrets/GEOIPUPDATE_ACCOUNT_ID"
 
 USER root
-# Sem --mount=type=secret (não suportado pelo builder do Railway) não há
-# como injetar as credenciais MaxMind aqui — sem elas, o próprio entry.sh já
-# falha graciosamente e cai no fallback abaixo (GeoIP fica desabilitado,
-# recurso opcional, não essencial pro login/autenticação).
-RUN mkdir -p /usr/share/GeoIP && \
-    /bin/sh -c "/usr/bin/entry.sh || echo 'Failed to get GeoIP database, disabling'; exit 0"
+RUN --mount=type=secret,id=GEOIPUPDATE_ACCOUNT_ID \
+    --mount=type=secret,id=GEOIPUPDATE_LICENSE_KEY \
+    mkdir -p /usr/share/GeoIP && \
+    /bin/sh -c "GEOIPUPDATE_LICENSE_KEY_FILE=/run/secrets/GEOIPUPDATE_LICENSE_KEY /usr/bin/entry.sh || echo 'Failed to get GeoIP database, disabling'; exit 0"
 
 # Stage 4: Download uv
 FROM ghcr.io/astral-sh/uv:0.8.8 AS uv
@@ -102,7 +103,8 @@ RUN rm -f /etc/apt/apt.conf.d/docker-clean; echo 'Binary::apt::APT::Keep-Downloa
 
 ENV PATH="/root/.cargo/bin:$PATH"
 
-RUN apt-get update && \
+RUN --mount=type=cache,id=apt-$TARGETARCH$TARGETVARIANT,sharing=locked,target=/var/cache/apt \
+    apt-get update && \
     # Required for installing pip packages
     apt-get install -y --no-install-recommends \
     # Build essentials
@@ -125,10 +127,11 @@ ENV UV_NO_BINARY_PACKAGE="cryptography lxml python-kadmin-rs xmlsec" \
     # and rustup tries to update it, which fails
     RUSTUP_PERMIT_COPY_RENAME="true"
 
-COPY pyproject.toml pyproject.toml
-COPY uv.lock uv.lock
-COPY packages packages
-RUN uv sync --frozen --no-install-project --no-dev
+RUN --mount=type=bind,target=pyproject.toml,src=pyproject.toml \
+    --mount=type=bind,target=uv.lock,src=uv.lock \
+    --mount=type=bind,target=packages,src=packages \
+    --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-install-project --no-dev
 
 # Stage 7: Run
 FROM python-base AS final-image
