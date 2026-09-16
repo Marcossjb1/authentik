@@ -383,6 +383,18 @@ export class IdentificationStage extends BaseStage<
                     ${this.challenge.primaryAction}
                 </button>
             </div>
+            ${this.challenge.flowDesignation === FlowDesignationEnum.Authentication
+                ? html`
+                      <div>
+                          <a
+                              href="https://www.wingemissoes.com.br"
+                              class="pf-c-button pf-m-secondary pf-m-block"
+                          >
+                              ${msg("Voltar para o site")}
+                          </a>
+                      </div>
+                  `
+                : nothing}
             ${this.challenge.passwordlessUrl
                 ? html`<ak-divider>${msg("Or")}</ak-divider>`
                 : nothing}`;
