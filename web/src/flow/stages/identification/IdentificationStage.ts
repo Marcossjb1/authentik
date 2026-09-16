@@ -390,7 +390,7 @@ export class IdentificationStage extends BaseStage<
                               href="https://www.wingemissoes.com.br"
                               class="pf-c-button pf-m-secondary pf-m-block"
                           >
-                              ${msg("Voltar para o site")}
+                              ${msg("Voltar para o início")}
                           </a>
                       </div>
                   `
