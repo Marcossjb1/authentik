@@ -74,7 +74,7 @@ export class PasswordStage extends BaseStage<PasswordChallenge, PasswordChalleng
                 ></ak-flow-input-password>
                 <div class="pf-c-form__group pf-m-action">
                     <button type="submit" class="pf-c-button pf-m-primary pf-m-block">
-                        ${msg("Continue")}
+                        ${msg("Entrar na plataforma")}
                     </button>
                 </div>
             </form>

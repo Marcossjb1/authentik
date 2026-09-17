@@ -105,7 +105,7 @@ export class InputPassword extends AKElement {
      * @attr
      */
     @property({ type: String })
-    placeholder = msg("Please enter your password");
+    placeholder = msg("Por favor insira sua senha");
 
     /**
      * The initial value of the input field.
