@@ -24,9 +24,58 @@ import PFButton from "@patternfly/patternfly/components/Button/button.css";
 import PFCheck from "@patternfly/patternfly/components/Check/check.css";
 import PFForm from "@patternfly/patternfly/components/Form/form.css";
 import PFFormControl from "@patternfly/patternfly/components/FormControl/form-control.css";
+import PFInputGroup from "@patternfly/patternfly/components/InputGroup/input-group.css";
 import PFLogin from "@patternfly/patternfly/components/Login/login.css";
 import PFTitle from "@patternfly/patternfly/components/Title/title.css";
 import PFBase from "@patternfly/patternfly/patternfly-base.css";
+
+/**
+ * Ícone de olho vetorial (sem preenchimento, mesmo estilo usado no resto da
+ * marca) pro botão de mostrar/ocultar senha dos campos de tipo "password"
+ * de uma PromptStage (cadastro, definir nova senha na recuperação) — esse
+ * tipo de campo não tem toggle nativo no Authentik (diferente do campo de
+ * senha da tela de login, que usa ak-flow-input-password).
+ */
+const EYE_OPEN_ICON = html`<svg
+    viewBox="0 0 24 24"
+    width="16"
+    height="16"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+>
+    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+    <circle cx="12" cy="12" r="3" />
+</svg>`;
+
+const EYE_CLOSED_ICON = html`<svg
+    viewBox="0 0 24 24"
+    width="16"
+    height="16"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+>
+    <path
+        d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a18.66 18.66 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+    />
+    <line x1="1" y1="1" x2="23" y2="23" />
+</svg>`;
+
+function togglePasswordVisibility(ev: PointerEvent): void {
+    ev.preventDefault();
+    const button = ev.currentTarget as HTMLButtonElement;
+    const input = button.previousElementSibling as HTMLInputElement | null;
+    if (!input) return;
+    const masked = input.type === "password";
+    input.type = masked ? "text" : "password";
+    button.classList.toggle("ak-password-toggle--visible", masked);
+    button.setAttribute("aria-label", masked ? msg("Hide password") : msg("Show password"));
+}
 
 @customElement("ak-stage-prompt")
 export class PromptStage extends WithCapabilitiesConfig(
@@ -38,6 +87,7 @@ export class PromptStage extends WithCapabilitiesConfig(
         PFAlert,
         PFForm,
         PFFormControl,
+        PFInputGroup,
         PFTitle,
         PFButton,
         PFCheck,
@@ -111,14 +161,29 @@ ${prompt.initialValue}</textarea
                     value="${prompt.initialValue}"
                 />`;
             case PromptTypeEnum.Password:
-                return html`<input
-                    type="password"
-                    name="${prompt.fieldKey}"
-                    placeholder="${prompt.placeholder}"
-                    autocomplete="new-password"
-                    class="pf-c-form-control"
-                    ?required=${prompt.required}
-                />`;
+                return html`<div class="pf-c-input-group">
+                    <input
+                        type="password"
+                        name="${prompt.fieldKey}"
+                        placeholder="${prompt.placeholder}"
+                        autocomplete="new-password"
+                        class="pf-c-form-control pf-m-icon"
+                        ?required=${prompt.required}
+                    />
+                    <button
+                        type="button"
+                        class="pf-c-button pf-m-control ak-password-toggle"
+                        aria-label=${msg("Show password")}
+                        @click=${togglePasswordVisibility}
+                    >
+                        <span class="ak-password-toggle__icon ak-password-toggle__icon--show" aria-hidden="true"
+                            >${EYE_OPEN_ICON}</span
+                        >
+                        <span class="ak-password-toggle__icon ak-password-toggle__icon--hide" aria-hidden="true"
+                            >${EYE_CLOSED_ICON}</span
+                        >
+                    </button>
+                </div>`;
             case PromptTypeEnum.Number:
                 return html`<input
                     type="number"

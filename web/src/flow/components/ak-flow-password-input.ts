@@ -19,7 +19,6 @@ import PFBase from "@patternfly/patternfly/patternfly-base.css";
  * A configuration object for the visibility states of the password input.
  */
 interface VisibilityProps {
-    icon: string;
     label: string;
 }
 
@@ -28,14 +27,46 @@ interface VisibilityProps {
  */
 const Visibility = {
     Reveal: {
-        icon: "fa-eye",
         label: msg("Show password"),
     },
     Mask: {
-        icon: "fa-eye-slash",
         label: msg("Hide password"),
     },
 } as const satisfies Record<string, VisibilityProps>;
+
+/**
+ * Custom Wing eye icon (vetorial, sem preenchimento) — em vez do ícone
+ * genérico do FontAwesome, pra combinar com o resto do visual da marca.
+ */
+const EYE_OPEN_ICON = html`<svg
+    viewBox="0 0 24 24"
+    width="16"
+    height="16"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+>
+    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+    <circle cx="12" cy="12" r="3" />
+</svg>`;
+
+const EYE_CLOSED_ICON = html`<svg
+    viewBox="0 0 24 24"
+    width="16"
+    height="16"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+>
+    <path
+        d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a18.66 18.66 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+    />
+    <line x1="1" y1="1" x2="23" y2="23" />
+</svg>`;
 
 @customElement("ak-flow-input-password")
 export class InputPassword extends AKElement {
@@ -262,26 +293,29 @@ export class InputPassword extends AKElement {
             "aria-label",
             masked ? Visibility.Reveal.label : Visibility.Mask.label,
         );
-
-        const iconElement = toggleElement.querySelector("i")!;
-
-        iconElement.classList.remove(Visibility.Mask.icon, Visibility.Reveal.icon);
-        iconElement.classList.add(masked ? Visibility.Reveal.icon : Visibility.Mask.icon);
+        toggleElement.classList.toggle("ak-password-toggle--visible", !masked);
     }
 
     renderVisibilityToggle() {
         if (!this.allowShowPassword) return nothing;
 
-        const { label, icon } = this.passwordVisible ? Visibility.Mask : Visibility.Reveal;
+        const { label } = this.passwordVisible ? Visibility.Mask : Visibility.Reveal;
 
         return html`<button
             ${ref(this.toggleVisibilityRef)}
             aria-label=${label}
             @click=${this.togglePasswordVisibility}
-            class="pf-c-button pf-m-control"
+            class="pf-c-button pf-m-control ak-password-toggle ${this.passwordVisible
+                ? "ak-password-toggle--visible"
+                : ""}"
             type="button"
         >
-            <i class="fas ${icon}" aria-hidden="true"></i>
+            <span class="ak-password-toggle__icon ak-password-toggle__icon--show" aria-hidden="true"
+                >${EYE_OPEN_ICON}</span
+            >
+            <span class="ak-password-toggle__icon ak-password-toggle__icon--hide" aria-hidden="true"
+                >${EYE_CLOSED_ICON}</span
+            >
         </button>`;
     }
 
