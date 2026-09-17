@@ -64,7 +64,7 @@ export class PasswordStage extends BaseStage<PasswordChallenge, PasswordChalleng
                     value="${this.challenge.pendingUser}"
                 />
                 <ak-flow-input-password
-                    label=${msg("Password")}
+                    label=${msg("Insira sua senha")}
                     required
                     grab-focus
                     class="pf-c-form__group"
