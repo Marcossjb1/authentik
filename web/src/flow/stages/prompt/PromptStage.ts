@@ -335,11 +335,31 @@ ${prompt.initialValue}</textarea
     }
 
     renderContinue(): TemplateResult {
+        // "attributes.account_type" só existe no formulário de cadastro
+        // (wing-enrollment / wing-enrollment-client) — usado aqui pra não
+        // mostrar o botão "Voltar para o início" também no formulário de
+        // definir nova senha da recuperação, que reaproveita este mesmo
+        // componente (ak-stage-prompt) sem ter esse campo.
+        const isSignup = (this.challenge.fields || []).some(
+            (prompt) => prompt.fieldKey === "attributes.account_type",
+        );
         return html` <div class="pf-c-form__group pf-m-action">
             <button type="submit" class="pf-c-button pf-m-primary pf-m-block">
                 ${msg("Continue")}
             </button>
-        </div>`;
+        </div>
+        ${isSignup
+            ? html`
+                  <div>
+                      <a
+                          href="https://www.wingemissoes.com.br"
+                          class="pf-c-button pf-m-secondary pf-m-block"
+                      >
+                          ${msg("Voltar para o início")}
+                      </a>
+                  </div>
+              `
+            : nothing}`;
     }
 
     render(): TemplateResult {
